@@ -9,23 +9,16 @@ const pool =  mysql.createPool({
   queueLimit: 0
 });
 
-function erro(err) {
-  console.log(err)
-}
-
 const db = pool.promise();
 
 async function execute(req, res, next) {
-  await db.execute(`
-    CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME}
-  `).catch(erro)
-
+  
   await db.execute(`
     CREATE TABLE IF NOT EXISTS tb_users (
       id INT PRIMARY KEY AUTO_INCREMENT, 
-      user_address CHAR(50), 
-      user_balance INT)
-  `).catch(erro)
+      user_address CHAR(49), 
+      user_balance FLOAT DEFAULT(0))
+  `)
 
   next()
 }
@@ -35,7 +28,7 @@ async function searchUsers() {
       SELECT * FROM tb_users
   `;
 
-  const [ rows, fields ] = await db.query(sql).catch(erro);
+  const [ rows, fields ] = await db.query(sql);
 
   return [ rows, fields ];
 }
@@ -43,20 +36,30 @@ async function searchUsers() {
 async function searchUser(address, valor) {
   const sql = `
       SELECT * FROM tb_users
-      WHERE user_address = ? AND user_balance >= ?
+      WHERE user_address = ?
   `;
   
-  const [ rows, fields ] = await db.query(sql, [address, valor]).catch(erro);
+  const [ rows, fields ] = await db.query(sql, [address])
+  console.log(rows)
   return [ rows, fields ];
 }
 
-async function createUser(address, valor) {
-  const sql = `
-    INSERT INTO tb_users (user_address, user_balance)
-    VALUES (?, ?)
-  `
 
-  await db.execute(sql, [address, valor]).catch(erro)
+
+async function updateUser(address, valor) {
+  const sql = `
+    UPDATE tb_users
+    SET user_balance = ?
+    WHERE user_address = ?
+  `
+  
+  await db.execute(sql, [valor, address]).catch(e => { 
+    throw {
+    "nome": "UPDATE_ERR",
+    "Mensagem": "",
+    "Erro": e
+    }
+  })
 }
 
-module.exports = { execute, searchUsers, searchUser, createUser }
+module.exports = { execute, searchUsers, searchUser, updateUser }
